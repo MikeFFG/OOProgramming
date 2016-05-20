@@ -1,30 +1,36 @@
 class MyCar
-  attr_accessor :year, :color, :model, :speed
+  attr_accessor :color
+  attr_reader :year
 
   def initialize(year, color, model)
     @year = year
     @color = color
     @model = model
-    @speed = 0
+    @current_speed = 0
+  end
+
+  def spray_paint(color)
+    self.color = color
+    puts "You new #{color} paint job looks great!"
   end
 
   def speed_up(number)
-    self.speed += number
+    @current_speed += number
     puts "You push the gas and accelerate #{number} mph."
   end
 
   def brake(number)
-    self.speed -= number
+    @current_speed -= number
     puts "You push the brake and decelerate #{number} mph."
   end
 
   def shut_off
-    self.speed = 0
+    @current_speed = 0
     puts "Car is shut off now."
   end
 
   def current_speed
-    puts "You are now going #{self.speed} mph."
+    puts "You are now going #{@current_speed} mph."
   end
 end
 
