@@ -9,9 +9,13 @@ class MyCar
     @current_speed = 0
   end
 
+  def self.calculate_gas_mileage(miles, gallons)
+    puts "#{miles / gallons} miles per gallon of gas."
+  end
+
   def spray_paint(color)
     self.color = color
-    puts "You new #{color} paint job looks great!"
+    puts "Your new #{color} paint job looks great!"
   end
 
   def speed_up(number)
@@ -32,14 +36,11 @@ class MyCar
   def current_speed
     puts "You are now going #{@current_speed} mph."
   end
+
+  def to_s
+    puts "This car is a #{color} #{year} #{@model}."
+  end
 end
 
-Cruze = MyCar.new(2014, "blue", "Cruze")
-Cruze.speed_up(20)
-Cruze.current_speed
-Cruze.speed_up(20)
-Cruze.current_speed
-Cruze.brake(20)
-Cruze.current_speed
-Cruze.shut_off
-Cruze.current_speed
+Cruze = MyCar.new("2013", "blue", "Cruze")
+puts Cruze
