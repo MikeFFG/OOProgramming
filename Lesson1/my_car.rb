@@ -50,6 +50,15 @@ class Vehicle
     puts "You are now going #{@current_speed} mph."
   end
 
+  def age
+    "Your #{self.model} is #{calculate_age} years old."
+  end
+
+  private
+
+  def calculate_age
+    Time.now.year - Time.new(@year).year
+  end
 end
 
 class MyCar < Vehicle
@@ -72,8 +81,4 @@ end
 Cruze = MyCar.new("2013", "blue", "Cruze")
 Truck = MyTruck.new("2000", "black", "whatever")
 
-Cruze.speed_up(50)
-Cruze.brake(20)
-Cruze.current_speed
-Cruze.shut_off
-Cruze.spray_paint("green")
+p Cruze.age
