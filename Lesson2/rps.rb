@@ -1,102 +1,149 @@
-class Player
-  attr_accessor :move, :name
+# frozen_string_literal: true
+require 'pry'
+class Score
+  attr_accessor :human_score, :computer_score
 
-  def initialize(player_type = :human)
-    @player_type = player_type
-    @move = nil
-    set_name
+  def initialize
+    @human_score = 0
+    @computer_score = 0
   end
 
-  def set_name
-    if human?
-      n = ""
-      loop do
-        puts "What is your name?"
-        n = gets.chomp
-        break unless n.empty?
-        puts "Sorry, you must enter a value."
-      end
-      self.name = n
-    else
-      self.name = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5'].sample
+  def calculate_score(winner)
+    case winner
+    when :human
+      @human_score += 1
+    when :computer
+      @computer_score += 1
     end
-  end
-
-  def choose
-    if human?
-      choice = nil
-      loop do
-        puts "Please choose rock, paper, or scissors:"
-        choice = gets.chomp
-        break if ['rock', 'paper', 'scissors'].include? choice
-        puts "Sorry, invalid choice."
-      end
-      self.move = choice
-    else
-      self.move = ['rock', 'paper', 'scissors'].sample
-    end
-  end
-
-  def human?
-    @player_type == :human
   end
 end
 
-# class Move
-#   def initialize
-#     # seems like we need something to keep track
-#     # of the choice... a move object can be "paper", "rock" or "scissors"
-#   end
-# end
+class Move
+  VALUES = ['rock', 'paper', 'scissors', 'lizard', 'spock'].freeze
 
-# class Rule
-#   def intitialize
-#     # not sure what the "state" of a rule object should be
-#   end
-# end
-
-# # not sure where "compare" goes yet
-# def compare(move1, move2)
-
-# end
-
-class RPSGame
-  attr_accessor :human, :computer
-
-  def initialize
-    @human = Player.new
-    @computer = Player.new(:computer)
+  def initialize(value)
+    @value = value
   end
 
-  def display_welcome_message
+  def scissors?
+    @value == 'scissors'
+  end
+
+  def paper?
+    @value == 'paper'
+  end
+
+  def rock?
+    @value == 'rock'
+  end
+
+  def >(other_move)
+    rock? && other_move.scissors? ||
+      scissors? && other_move.paper? ||
+      paper? && other_move.rock?
+  end
+
+  def <(other_move)
+    rock? && other_move.paper? ||
+      scissors? && other_move.rock? ||
+      paper? && other_move.scissors?
+  end
+
+  def to_s
+    @value
+  end
+end
+
+class Player
+  attr_accessor :move, :name
+
+  def initialize
+    set_name
+    clear_screen
+  end
+end
+
+class Human < Player
+  def set_name
+    n = ""
+    loop do
+      puts "What is your name?"
+      n = gets.chomp
+      break unless n.empty?
+      puts "Sorry, you must enter a value."
+    end
+    self.name = n
+  end
+
+  def choose
+    choice = nil
+    loop do
+      puts "Please choose rock, paper, or scissors:"
+      choice = gets.chomp
+      break if Move::VALUES.include? choice
+      puts "Sorry, invalid choice."
+    end
+    self.move = Move.new(choice)
+  end
+end
+
+class Computer < Player
+  def set_name
+    self.name = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5'].sample
+  end
+
+  def choose
+    self.move = Move.new(Move::VALUES.sample)
+  end
+end
+
+class RPSGame
+  attr_accessor :human, :computer, :score
+
+  def initialize
+    @human = Human.new
+    @computer = Computer.new
+    @score = Score.new
+  end
+
+  def self.display_welcome_message
     puts "Welcome to Rock, Paper, Scissors!"
   end
 
-  def display_goodbye_message
+  def self.display_goodbye_message
     puts "Thanks for playing Rock, Paper, Scissors. Goodbye!"
   end
 
-  def display_winner
+  def display_moves
     puts "#{human.name} chose #{human.move}."
     puts "#{computer.name} chose #{computer.move}."
+  end
 
-    case human.move
-    when 'rock'
-      puts "It's a tie!" if computer.move == 'rock'
-      puts "#{human.name} won!" if computer.move == 'scissors'
-      puts "#{computer.name} won!" if computer.move == 'paper'
-    when 'scissors'
-      puts "It's a tie!" if computer.move == 'scissors'
-      puts "#{human.name} won!" if computer.move == 'paper'
-      puts "#{computer.name} won!" if computer.move == 'rock'
-    when 'paper'
-      puts "It's a tie!" if computer.move == 'paper'
-      puts "#{human.name} won!" if computer.move == 'rock'
-      puts "#{computer.name} won!" if computer.move == 'scissors'
+  def display_winner(winner)
+    case winner
+    when :human
+      puts "#{human.name} won the round!"
+    when :computer
+      puts "#{computer.name} won the round!"
+    when :tie
+      puts "It's a tie!"
     end
   end
 
-  def play_again?
+  def display_score
+    puts "#{human.name} has #{score.human_score} points."
+    puts "#{computer.name} chose #{score.computer_score} points."
+  end
+
+  def display_game_winner
+    if score.human_score == 10
+      puts "#{human.name} wins the game!"
+    elsif score.computer_score == 10
+      puts "#{computer.name} wins the game!"
+    end
+  end
+
+  def self.play_again?
     answer = nil
     loop do
       puts "Would you like to play again? (y/n)"
@@ -105,21 +152,46 @@ class RPSGame
       puts "Sorry, must be y or n."
     end
 
-    return true if answer == 'y'
-    return false
+    return false if answer.casecmp('n') == 0
+    return true if answer.casecmp('y') == 0
+  end
+
+  def calculate_winner
+    if human.move > computer.move
+      :human
+    elsif human.move < computer.move
+      :computer
+    else
+      :tie
+    end
   end
 
   def play
-    display_welcome_message
-
     loop do
       human.choose
       computer.choose
-      display_winner
-      break unless play_again?
+      clear_screen
+      display_moves
+      winner = calculate_winner
+      display_winner(winner)
+      score.calculate_score(winner)
+      display_score
+      break if score.human_score == 10 || score.computer_score == 10
     end
-    display_goodbye_message
+    display_game_winner
   end
 end
 
-RPSGame.new.play
+def clear_screen
+  system('clear') || system('cls')
+end
+
+clear_screen
+RPSGame.display_welcome_message
+
+loop do
+  RPSGame.new.play
+  break unless RPSGame.play_again?
+end
+
+RPSGame.display_goodbye_message
