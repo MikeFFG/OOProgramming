@@ -51,21 +51,31 @@ class Move
   end
 end
 
+class History
+  def initialize
+    @history = []
+  end
+
+  def display_history
+    puts @history
+  end
+
+  def update_history(comp_move, player_move, winner)
+    @history << [comp_move, player_move, winner]
+  end
+end
+
 class Player
   attr_accessor :move, :name
 
   def initialize
     set_name
     Display.clear_screen
-    move_history = []
-  end
-
-  def update_history
-    move_history.push(move.to_s)
   end
 end
 
 class Human < Player
+
   def set_name
     n = ""
     loop do
@@ -90,23 +100,48 @@ class Human < Player
 end
 
 class Computer < Player
+  attr_accessor :name
+  COMPUTERS = {'Rocky' => { 'rock' => 0.6, 'paper' => 0.1, 'scissors' => 0.1, 'lizard' => 0.1, 'spock' => 0.1 },
+                'LizardMan' => { 'rock' => 0.1, 'paper' => 0.1, 'scissors' => 0.1, 'lizard' => 0.6, 'spock' => 0.1 },
+                'The Dude' => { 'rock' => 0.2, 'paper' => 0.2, 'scissors' => 0.2, 'lizard' => 0.2, 'spock' => 0.2 }}.freeze
+
+  def initialize
+    super
+    @move_set = []
+  end
+
   def set_name
-    self.name = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5'].sample
+    answer = nil
+    loop do
+      puts "Choose your opponent: Rocky, LizardMan, or The Dude."
+      answer = gets.chomp.downcase
+      break if ['rocky', 'lizardman', 'the dude'].include? answer
+      puts "Sorry, must enter either Rocky, LizardMan or The Dude"
+    end
+    self.name = answer
   end
 
   def calculate_move_set
-    @move_set = Move::VALUES
+    # binding.pry
+    case self.name
+    when 'rocky'
+      COMPUTERS['Rocky'].each do |key, weight|
+        (weight * 100).to_i.times { @move_set << key }
+      end
+    when 'lizardman'
+      COMPUTERS['LizardMan'].each do |key, weight|
+        (weight * 100).to_i.times { @move_set << key }
+      end
+    when 'the dude'
+      COMPUTERS['The Dude'].each do |key, weight|
+        (weight * 100).to_i.times { @move_set << key }
+      end
+    end
   end
 
   def choose
     calculate_move_set
     self.move = Move.new(@move_set.sample)
-  end
-end
-
-class History
-  def initialize
-    @history = []
   end
 end
 
@@ -126,7 +161,8 @@ module Display
 
   def display_moves
     puts "#{human.name} chose #{human.move}."
-    puts "#{computer.name} chose #{computer.move}."
+    # binding.pry
+    puts "#{computer.name.capitalize} chose #{computer.move}."
   end
 
   def display_winner(winner)
@@ -134,7 +170,7 @@ module Display
     when :human
       puts "#{human.name} won the round!"
     when :computer
-      puts "#{computer.name} won the round!"
+      puts "#{computer.name.capitalize} won the round!"
     when :tie
       puts "It's a tie!"
     end
@@ -142,21 +178,21 @@ module Display
 
   def display_score
     puts "#{human.name} has #{score.human_score} points."
-    puts "#{computer.name} has #{score.computer_score} points."
+    puts "#{computer.name.capitalize} has #{score.computer_score} points."
   end
 
   def display_game_winner
     if score.human_score == 5
       puts "#{human.name} wins the game!"
     elsif score.computer_score == 5
-      puts "#{computer.name} wins the game!"
+      puts "#{computer.name.capitalize} wins the game!"
     end
   end
 end
 
 class RPSGame
   include Display
-  attr_accessor :human, :computer, :score
+  attr_accessor :human, :computer, :score, :history
 
   def initialize
     @human = Human.new
@@ -202,6 +238,8 @@ class RPSGame
       display_winner(winner)
       score.calculate_score(winner)
       display_score
+      history.update_history(computer.move, human.move, winner)
+      history.display_history
       break if score.human_score == 5 || score.computer_score == 5
     end
   end
