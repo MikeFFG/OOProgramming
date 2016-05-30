@@ -16,11 +16,6 @@ class Score
       @computer_score += 1
     end
   end
-
-  def reset_score
-    @human_score = 0
-    @computer_score = 0
-  end
 end
 
 class Move
@@ -56,12 +51,7 @@ class Player
 
   def initialize
     set_name
-    Display.clear_screen
-    move_history = []
-  end
-
-  def update_history
-    move_history.push(move.to_s)
+    clear_screen
   end
 end
 
@@ -94,30 +84,34 @@ class Computer < Player
     self.name = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5'].sample
   end
 
-  def calculate_move_set
-    @move_set = Move::VALUES
-  end
-
   def choose
-    calculate_move_set
-    self.move = Move.new(@move_set.sample)
+    self.move = Move.new(Move::VALUES.sample)
   end
 end
 
-class History
+class Rock
   def initialize
-    @history = []
+    @value = 'rock'
   end
 end
 
-module Display
-  def self.clear_screen
-    system('clear') || system('cls')
+class Paper
+  def initialize
+    @value = 'paper'
+  end
+end
+
+class RPSGame
+  attr_accessor :human, :computer, :score
+
+  def initialize
+    @human = Human.new
+    @computer = Computer.new
+    @score = Score.new
   end
 
   def self.display_welcome_message
     puts "Welcome to Rock, Paper, Scissors, Lizard, Spock!"
-    puts "First player to win 5 rounds wins the game!"
   end
 
   def self.display_goodbye_message
@@ -142,27 +136,15 @@ module Display
 
   def display_score
     puts "#{human.name} has #{score.human_score} points."
-    puts "#{computer.name} has #{score.computer_score} points."
+    puts "#{computer.name} chose #{score.computer_score} points."
   end
 
   def display_game_winner
-    if score.human_score == 5
+    if score.human_score == 10
       puts "#{human.name} wins the game!"
-    elsif score.computer_score == 5
+    elsif score.computer_score == 10
       puts "#{computer.name} wins the game!"
     end
-  end
-end
-
-class RPSGame
-  include Display
-  attr_accessor :human, :computer, :score
-
-  def initialize
-    @human = Human.new
-    @computer = Computer.new
-    @score = Score.new
-    @history = History.new
   end
 
   def self.play_again?
@@ -188,34 +170,33 @@ class RPSGame
     end
   end
 
-  def make_choices
-    human.choose
-    computer.choose
-  end
-
   def play
     loop do
-      make_choices
-      Display.clear_screen
+      human.choose
+      computer.choose
+      clear_screen  
       display_moves
       winner = calculate_winner
       display_winner(winner)
       score.calculate_score(winner)
       display_score
-      break if score.human_score == 5 || score.computer_score == 5
+      break if score.human_score == 10 || score.computer_score == 10
     end
   end
 end
 
-Display.clear_screen
-Display.display_welcome_message
-game = RPSGame.new
+def clear_screen
+  system('clear') || system('cls')
+end
+
+clear_screen
+RPSGame.display_welcome_message
 
 loop do
-  game.score.reset_score
+  game = RPSGame.new
   game.play
   game.display_game_winner
   break unless RPSGame.play_again?
 end
 
-Display.display_goodbye_message
+RPSGame.display_goodbye_message
