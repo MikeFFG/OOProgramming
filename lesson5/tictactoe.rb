@@ -132,7 +132,7 @@ class Square
 end
 
 class Player
-  attr_reader :marker
+  attr_accessor :marker
 
   def initialize(marker)
     @marker = marker
@@ -153,31 +153,60 @@ class TTTGame
 
   HUMAN_MARKER = 'X'
   COMPUTER_MARKER = 'O'
-  FIRST_TO_MOVE = HUMAN_MARKER
 
-  attr_reader :board, :human, :computer, :score
+  attr_reader :board, :human, :computer, :score, :first_player
 
   def initialize
     @board = Board.new
     @human = Player.new(HUMAN_MARKER)
     @computer = Player.new(COMPUTER_MARKER)
-    @current_marker = FIRST_TO_MOVE
+    @current_marker = HUMAN_MARKER
     @score = Score.new
+    @first_player = human.marker
+  end
+
+  def choose_first_player
+    puts "Who should make the first move? Type Player or Computer."
+    answer = nil
+    loop do
+      answer = gets.chomp.downcase
+      break if ['player', 'computer'].include?(answer)
+      puts "Invalid entry. Please enter either Player or Computer"
+    end
+    if answer == 'player'
+      @first_player = human.marker
+      @current_marker = human.marker
+    else
+      @first_player = computer.marker
+      @current_marker = computer.marker
+    end
+  end
+
+  def pick_marker
+    puts "Choose any single character as a marker (besides 'O'). The default is 'X'."
+    answer = nil
+    loop do
+      answer = gets.chomp
+      break if answer != 'O' && answer.size == 1
+      puts "Invalid entry. Please enter only a single character that is not a capital 'O'."
+    end
+    human.marker = answer
   end
 
   def play
     clear
     display_welcome_message
     loop do
+      pick_marker
+      choose_first_player
+      clear
       loop do
         display_board
-
         loop do
           current_player_moves
           break if board.someone_won? || board.full?
           clear_screen_and_display_board if human_turn?
         end
-
         update_score
         break if score.human == 5 || score.computer == 5
         display_round_result
@@ -304,7 +333,7 @@ class TTTGame
     if score.human == 5
       puts "You win the match! Congratulations!"
     else
-      puts "You are a loser..."
+      puts "You lost the match. You are a loser..."
     end
     puts ""
   end
@@ -345,30 +374,26 @@ class TTTGame
 
   def reset(type=:match)
     if type == :match
-      board.reset
-      @current_marker = FIRST_TO_MOVE
       score.human = 0
       score.computer = 0
-      clear
-    elsif type == :round
-      board.reset
-      @current_marker = FIRST_TO_MOVE
-      clear
     end
+      board.reset
+      @current_marker = @first_player
+      clear
   end
 
   def current_player_moves
     if human_turn?
       human_moves
-      @current_marker = COMPUTER_MARKER
+      @current_marker = computer.marker
     else
       computer_moves
-      @current_marker = HUMAN_MARKER
+      @current_marker = human.marker
     end
   end
 
   def human_turn?
-    @current_marker == HUMAN_MARKER
+    @current_marker == human.marker
   end
 end
 
