@@ -169,7 +169,6 @@ class TTTGame
     clear
     display_welcome_message
     loop do
-
       loop do
         display_board
 
@@ -205,11 +204,21 @@ class TTTGame
     end
   end
 
+  def get_points_string(player)
+    if player == :human
+      return "points" unless score.human == 1
+    end
+    if player == :computer
+      return "points" unless score.computer == 1
+    end
+    "point"
+  end
+
   def display_score
-    human_points_string = score.human > 1 || score.human == 0 ? "points" : "point"
-    computer_points_string = score.computer > 1 || score.computer == 0 ? "points" : "point"
-    puts "You have #{score.human} #{human_points_string}." +
-         " Computer has #{score.computer} #{computer_points_string}."
+    human_points_string = get_points_string(:human)
+    computer_points_string = get_points_string(:computer)
+    puts "You have #{score.human} #{human_points_string}. " \
+         "Computer has #{score.computer} #{computer_points_string}."
     puts ""
   end
 
@@ -239,7 +248,6 @@ class TTTGame
     puts "Welcome to Tic Tac Toe!"
     puts ""
     display_rules
-
   end
 
   def clear_screen_and_display_board
@@ -276,32 +284,29 @@ class TTTGame
 
     board[square] = human.marker
   end
-  
+
   def display_round_result
     clear_screen_and_display_board
 
     case board.winning_marker
     when human.marker
       puts "You won this round!"
-      puts ""
     when computer.marker
       puts "Computer won this round :("
-      puts ""
     else
       puts "It's a tie..."
-      puts ""
     end
+    puts ""
   end
 
   def display_match_result
     clear_screen_and_display_board
     if score.human == 5
       puts "You win the match! Congratulations!"
-      puts ""
     else
       puts "You are a loser..."
-      puts ""
     end
+    puts ""
   end
 
   def computer_moves
