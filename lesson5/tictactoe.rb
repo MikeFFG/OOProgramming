@@ -58,22 +58,27 @@ class Board
     nil
   end
 
-  # def find_at_risk_square(marker)
-  #   WINNING_LINES.each do |line|
-  #     squares = @squares.values_at(*line)
-  #     if two_identical_markers?(squares) && !three_identical_markers?(squares)
-  #       # binding.pry
-  #       square_to_mark = (0..squares.size-1).select { |index| squares[index].marker == ' ' && squares[index].unmarked?}
-  #       return (square_to_mark[0] + 1)
-  #     end
-  #   end
-  #   false
-  # end
+  def marker_count(line, marker)
+    markers = 0
 
-  def two_identical_markers?(squares)
-    markers = squares.select(&:marked?).collect(&:marker)
-    return false if markers.size != 2
-    return true if markers.size == 2
+    line.each do |square|
+      markers += 1 if @squares[square].marker == marker
+    end
+    markers
+  end
+
+  def square_value(line, marker)
+    value = nil
+
+    line.each do |square|
+      value = square if @squares[square].marker == marker
+    end
+
+    value
+  end
+
+  def square_five
+    return 5 if unmarked_keys.include?(5)
   end
 
   def reset
@@ -300,11 +305,25 @@ class TTTGame
   end
 
   def computer_moves
-    # if board.find_at_risk_square(human.marker)
-    #   board[board.find_at_risk_square(human.marker)] = computer.marker
-    # else
-      board[board.unmarked_keys.sample] = computer.marker
-    # end
+    chosen_square = find_at_risk_square(computer.marker) ||
+                    find_at_risk_square(human.marker) ||
+                    board.square_five ||
+                    board.unmarked_keys.sample
+    board[chosen_square] = computer.marker
+  end
+
+  def find_at_risk_square(marker)
+    square = nil
+    Board::WINNING_LINES.each do |line|
+      if board.marker_count(line, marker) == 2 &&
+         board.marker_count(line, Square::INITIAL_MARKER) == 1
+        square = board.square_value(line, Square::INITIAL_MARKER)
+        break
+      else
+        square = false
+      end
+    end
+    square
   end
 
   def play_new_match?
