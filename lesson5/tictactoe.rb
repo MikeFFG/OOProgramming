@@ -15,6 +15,7 @@ module Utilities
     end
     new_string
   end
+
   def clear
     system 'clear'
   end
@@ -55,6 +56,24 @@ class Board
       end
     end
     nil
+  end
+
+  # def find_at_risk_square(marker)
+  #   WINNING_LINES.each do |line|
+  #     squares = @squares.values_at(*line)
+  #     if two_identical_markers?(squares) && !three_identical_markers?(squares)
+  #       # binding.pry
+  #       square_to_mark = (0..squares.size-1).select { |index| squares[index].marker == ' ' && squares[index].unmarked?}
+  #       return (square_to_mark[0] + 1)
+  #     end
+  #   end
+  #   false
+  # end
+
+  def two_identical_markers?(squares)
+    markers = squares.select(&:marked?).collect(&:marker)
+    return false if markers.size != 2
+    return true if markers.size == 2
   end
 
   def reset
@@ -281,7 +300,11 @@ class TTTGame
   end
 
   def computer_moves
-    board[board.unmarked_keys.sample] = computer.marker
+    # if board.find_at_risk_square(human.marker)
+    #   board[board.find_at_risk_square(human.marker)] = computer.marker
+    # else
+      board[board.unmarked_keys.sample] = computer.marker
+    # end
   end
 
   def play_new_match?
