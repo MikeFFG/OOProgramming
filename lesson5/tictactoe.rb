@@ -132,10 +132,12 @@ class Square
 end
 
 class Player
-  attr_accessor :marker
+  attr_accessor :marker, :name, :forfeited
 
-  def initialize(marker)
+  def initialize(marker, name)
     @marker = marker
+    @name = name
+    @forfeited = false
   end
 end
 
@@ -158,22 +160,21 @@ class TTTGame
 
   def initialize
     @board = Board.new
-    @human = Player.new(HUMAN_MARKER)
-    @computer = Player.new(COMPUTER_MARKER)
+    @human = Player.new(HUMAN_MARKER, 'Player')
+    @computer = Player.new(COMPUTER_MARKER, 'Computer')
     @current_marker = HUMAN_MARKER
     @score = Score.new
     @first_player = human.marker
+    @first_iteration = true
   end
 
-  def choose_first_player
-    puts "Who should make the first move? Type Player or Computer."
-    answer = nil
-    loop do
-      answer = gets.chomp.downcase
-      break if ['player', 'computer'].include?(answer)
-      puts "Invalid entry. Please enter either Player or Computer"
-    end
-    if answer == 'player'
+  def display_choose_first_player_message
+    puts "Who should make the first move?" \
+         " Type #{human.name} or #{computer.name}."
+  end
+
+  def assign_first_player(choice)
+    if choice == human.name.downcase
       @first_player = human.marker
       @current_marker = human.marker
     else
@@ -182,38 +183,93 @@ class TTTGame
     end
   end
 
+  def choose_first_player
+    display_choose_first_player_message
+    answer = nil
+    loop do
+      answer = gets.chomp.downcase
+      break if [human.name.downcase, computer.name.downcase].include?(answer)
+      puts "Invalid entry. Please enter either " \
+           "#{human.name} or #{computer.name}"
+    end
+    assign_first_player(answer)
+  end
+
   def pick_marker
-    puts "Choose any single character as a marker (besides 'O'). The default is 'X'."
+    puts "Choose any single character as a marker (besides 'O')." \
+         " The default is 'X'."
     answer = nil
     loop do
       answer = gets.chomp
       break if answer != 'O' && answer.size == 1
-      puts "Invalid entry. Please enter only a single character that is not a capital 'O'."
+      puts "Invalid entry. Please enter only a single " \
+           "character that is not a capital 'O'."
     end
     human.marker = answer
+  end
+
+  def set_player_names
+    puts "Enter your name. Leave blank and hit enter for the default: 'Player'"
+    answer = gets.chomp
+    human.name = answer.empty? ? 'Player' : answer
+    puts "Hi #{human.name}! \nEnter a computer name." \
+         " Leave blank and hit enter for the default: 'Computer'"
+    answer = gets.chomp
+    answer.empty? ? computer.name = 'Computer' : computer.name = answer
+  end
+
+  def ask_user_to_choose_settings
+    if @first_iteration == true
+      puts "Would you like any custom settings? (y or n)"
+      @first_iteration = false
+    else
+      puts "Would you like to update your settings? (y or n)"
+    end
+    answer = nil
+    loop do
+      answer = gets.chomp.downcase
+      break if ['y', 'n'].include?(answer)
+      puts "Invalid entry. Please enter y or n only."
+    end
+    answer
+  end
+
+  def choose_settings
+    if ask_user_to_choose_settings == 'y'
+      clear
+      set_player_names
+      pick_marker
+      choose_first_player
+    end
+  end
+
+  def single_round_logic
+    clear_screen_and_display_board
+    loop do
+      current_player_moves
+      break if board.someone_won? || board.full?
+      clear_screen_and_display_board if human_turn?
+    end
+    update_score
+  end
+
+  def single_match_logic
+    loop do
+      single_round_logic
+      break if score.human == 5 || score.computer == 5
+      display_round_result
+      break unless next_round?
+      reset(:round)
+      display_new_round_message
+    end
   end
 
   def play
     clear
     display_welcome_message
     loop do
-      pick_marker
-      choose_first_player
-      clear
-      loop do
-        display_board
-        loop do
-          current_player_moves
-          break if board.someone_won? || board.full?
-          clear_screen_and_display_board if human_turn?
-        end
-        update_score
-        break if score.human == 5 || score.computer == 5
-        display_round_result
-        break unless next_round?
-        reset(:round)
-        display_new_round_message
-      end
+      choose_settings
+      single_match_logic
       display_match_result
       break unless play_new_match?
       reset(:match)
@@ -246,8 +302,8 @@ class TTTGame
   def display_score
     human_points_string = get_points_string(:human)
     computer_points_string = get_points_string(:computer)
-    puts "You have #{score.human} #{human_points_string}. " \
-         "Computer has #{score.computer} #{computer_points_string}."
+    puts "You have #{score.human} #{human_points_string}.\n" \
+         "#{computer.name} has #{score.computer} #{computer_points_string}."
     puts ""
   end
 
@@ -264,7 +320,7 @@ class TTTGame
       break if %w(y n).include? answer
       puts "Sorry, must be y or n."
     end
-
+    human.forfeited = true if answer == 'n'
     answer == 'y'
   end
 
@@ -285,7 +341,8 @@ class TTTGame
   end
 
   def display_board
-    puts "You're an #{human.marker}. Computer is an #{computer.marker}."
+    puts "#{human.name} is: #{human.marker}"
+    puts "#{computer.name} is: #{computer.marker}"
     puts ""
     puts display_score
     board.draw
@@ -321,7 +378,7 @@ class TTTGame
     when human.marker
       puts "You won this round!"
     when computer.marker
-      puts "Computer won this round :("
+      puts "#{computer.name} won this round :("
     else
       puts "It's a tie..."
     end
@@ -331,11 +388,13 @@ class TTTGame
   def display_match_result
     clear_screen_and_display_board
     if score.human == 5
-      puts "You win the match! Congratulations!"
+      puts "You win the match, #{human.name}! Congratulations!"
+    elsif human.forfeited == true
+      puts "You forfeited the match, #{human.name}. You chicken???"
+      human.forfeited = false
     else
-      puts "You lost the match. You are a loser..."
+      puts "You lost the match, #{human.name}. You are SUCH a loser..."
     end
-    puts ""
   end
 
   def computer_moves
@@ -363,7 +422,7 @@ class TTTGame
   def play_new_match?
     answer = nil
     loop do
-      puts "Would you like to play a new match? (y/n)"
+      puts "Would you like to play a new match? (y or n)"
       answer = gets.chomp.downcase
       break if %w(y n).include? answer
       puts "Sorry, must be y or n."
@@ -377,9 +436,10 @@ class TTTGame
       score.human = 0
       score.computer = 0
     end
-      board.reset
-      @current_marker = @first_player
-      clear
+    board.reset
+    @current_marker = @first_player
+    human.forfeited = false
+    clear
   end
 
   def current_player_moves
