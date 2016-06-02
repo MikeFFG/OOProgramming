@@ -373,7 +373,7 @@ class TTTGame
       score.human = 0
       score.computer = 0
     end
-    board.reset
+    board.reset_board
     @current_marker = @first_player
     human.forfeited = false
     clear
