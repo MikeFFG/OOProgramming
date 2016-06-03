@@ -271,7 +271,7 @@ class Human < Player
     puts "Hi #{name}!"
   end
 
-  def moves(board)
+  def move(board)
     puts "Choose a square: #{joinor(board.unmarked_keys)}"
     square = nil
     loop do
@@ -420,7 +420,7 @@ class TTTGame
 
   def current_player_moves
     if human.turn?(@current_marker)
-      human.moves(board)
+      human.move(board)
       @current_marker = computer.marker
     else
       computer.move(board, human)
