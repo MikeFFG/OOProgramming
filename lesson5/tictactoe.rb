@@ -256,12 +256,12 @@ class Human < Player
     answer = nil
     loop do
       answer = gets.strip
-      break if answer != 'O' && answer.size == 1
+      break if (answer != 'O' && answer.size == 1) || answer.empty?
       puts "Invalid entry. Please enter only a single " \
            "character that is not a capital 'O'."
     end
 
-    self.marker = answer
+    self.marker = answer.empty? ? TTTGame::DEFAULT_HUMAN_MARKER : answer
   end
 
   def set_name
