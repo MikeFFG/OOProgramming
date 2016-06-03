@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 require 'pry'
 
-module StringHelpers
+module OutputHelpers
   def joinor(array, delimiter = ',', word = 'or')
     new_string = ''
     array.each_index do |num|
@@ -29,8 +29,8 @@ module Displayable
   end
 
   def display_score
-    human_points_string = human.get_points_string
-    computer_points_string = computer.get_points_string
+    human_points_string = human.points_string
+    computer_points_string = computer.points_string
     puts "You have #{human.score} #{human_points_string}.\n" \
          "#{computer.name} has #{computer.score} #{computer_points_string}."
     puts ""
@@ -188,7 +188,7 @@ class Board
     square = nil
     WINNING_LINES.each do |line|
       if marker_count(line, marker) == 2 &&
-        marker_count(line, Square::INITIAL_MARKER) == 1
+         marker_count(line, Square::INITIAL_MARKER) == 1
         square = square_value(line, Square::INITIAL_MARKER)
         break
       else
@@ -230,7 +230,7 @@ class Square
 end
 
 class Player
-  include StringHelpers
+  include OutputHelpers
   attr_accessor :marker, :name, :forfeited, :score
 
   def initialize(marker, name)
@@ -241,10 +241,10 @@ class Player
   end
 
   def update_score(board)
-    self.score += 1 if board.winning_marker == self.marker
+    self.score += 1 if board.winning_marker == marker
   end
 
-  def get_points_string
+  def points_string
     self.score == 1 ? "point" : "points"
   end
 end
@@ -268,7 +268,7 @@ class Human < Player
     puts "Enter your name. Leave blank and hit enter for the default: 'Player'"
     answer = gets.strip
     self.name = answer.empty? ? 'Player' : answer
-    puts "Hi #{self.name}!"
+    puts "Hi #{name}!"
   end
 
   def moves(board)
@@ -280,11 +280,11 @@ class Human < Player
       puts "Sorry, that's not a valid choice."
     end
 
-    board[square] = self.marker
+    board[square] = marker
   end
 
   def turn?(current_marker)
-    current_marker == self.marker
+    current_marker == marker
   end
 end
 
@@ -297,16 +297,16 @@ class Computer < Player
   end
 
   def move(board, human)
-    chosen_square = board.find_at_risk_square(self.marker) ||
+    chosen_square = board.find_at_risk_square(marker) ||
                     board.find_at_risk_square(human.marker) ||
                     board.square_five ||
                     board.unmarked_keys.sample
-    board[chosen_square] = self.marker
+    board[chosen_square] = marker
   end
 end
 
 class TTTGame
-  include StringHelpers
+  include OutputHelpers
   include Displayable
 
   DEFAULT_HUMAN_MARKER = 'X'
@@ -418,7 +418,6 @@ class TTTGame
     end
   end
 
-  ### Turns ###
   def current_player_moves
     if human.turn?(@current_marker)
       human.moves(board)
