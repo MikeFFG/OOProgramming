@@ -1,6 +1,42 @@
 require 'pry'
 
+module Displayable
+  def clear_screen
+    system('clear') || system('cls')
+  end
+
+  def prompt(msg)
+    puts "=> #{msg}"
+  end
+
+  def display_welcome_message
+    prompt "Welcome to Twenty-One!"
+    prompt "First player to win 5 rounds wins the game!"
+    prompt ""
+  end
+
+  def display_press_key_to_start
+    prompt "Ready to play? Press enter key to continue."
+    answer = gets.chomp
+  end
+
+  def concatenate_cards(hand)
+    new_string = ''
+    hand.each_index do |index|
+      new_string += if index == hand.size - 1 && hand.size > 1
+                      "and #{hand[index]}."
+                    elsif hand.size > 2
+                      "#{hand[index]}, "
+                    else
+                      "#{hand[index]} "
+                    end
+    end
+    new_string
+  end
+end
+
 class Participant
+  include Displayable
   attr_accessor :hand, :name
 
   def initialize(name)
@@ -13,7 +49,7 @@ class Participant
   end
 
   def display_hit
-    puts "#{hand.last}"
+    prompt "#{hand.last}"
   end
 
   def total
@@ -40,11 +76,16 @@ class Participant
   end
 
   def display_total
-    puts "#{name}'s total = #{total}"
+    prompt "#{name}'s total = #{total}"
   end
 
   def busted?
     total > 21
+  end
+
+  def display_cards
+    string_to_display = "#{name} shows: " + concatenate_cards(hand)
+    prompt string_to_display
   end
 end
 
@@ -53,8 +94,8 @@ class Player < Participant
     super
   end
 
-  def show_initial_cards
-    puts "#{name} shows: #{hand[0]} and #{hand[1]}"
+  def display_initial_cards
+    prompt "#{name} shows: #{hand[0]} and #{hand[1]}"
   end
 
   def stay
@@ -66,8 +107,8 @@ class Dealer < Participant
     super
   end
 
-  def show_initial_cards
-    puts "#{name} shows: #{hand[0]} and unknown card"
+  def display_initial_cards
+    prompt "#{name} shows: #{hand[0]} and unknown card"
   end
 
   def stay
@@ -113,6 +154,7 @@ class Card
 end
 
 class Game
+  include Displayable
   attr_accessor :player, :dealer, :deck
 
   def initialize
@@ -128,18 +170,18 @@ class Game
     dealer.hand[1] = deck.deal
   end
 
-  def show_initial_cards
-    dealer.show_initial_cards
-    player.show_initial_cards
+  def display_initial_cards
+    dealer.display_initial_cards
+    player.display_initial_cards
   end
 
   def ask_player_for_action
     answer = nil
-    puts "Hit or Stay? (h or s)"
+    prompt "Hit or Stay? (h or s)"
     loop do
       answer = gets.chomp.downcase
       break if ['h','s'].include?(answer)
-      puts "Invalid Entry. Please enter h or s only."
+      prompt "Invalid Entry. Please enter h or s only."
     end
     answer
   end
@@ -155,14 +197,14 @@ class Game
 
   end
 
-  def clear
-    system 'clear'
-  end
-
   def start
-    clear
+    clear_screen
+    display_welcome_message
+    display_press_key_to_start
+
+    clear_screen
     deal_cards
-    show_initial_cards
+    display_initial_cards
     player.display_total
 
     loop do
@@ -174,24 +216,27 @@ class Game
           break
         end
       else
-        puts "Player Stays"
+        prompt "Player Stays"
         break
       end
       player.display_total
     end
     if player.busted?
-      puts "You busted!"
+      prompt "You busted!"
     else
+      prompt "Dealer's turn now."
+      dealer.display_cards
       loop do
         #dealer_turn
+        
         if dealer.total < 17
           dealer.hit(deck.deal)
-          dealer.display_hit
+          # dealer.display_hit
           if dealer.busted?
             break
           end
         else
-          puts "Dealer Stays"
+          prompt "Dealer Stays"
           break
         end
       end
