@@ -1,23 +1,106 @@
 # frozen_string_literal: true
 require 'pry'
 
-module Utilities
-  def joinor(ary, dlm = ',', word = 'or')
+module StringHelpers
+  def joinor(array, delimiter = ',', word = 'or')
     new_string = ''
-    ary.each_index do |num|
-      new_string += if num == ary.length - 1 && ary.length > 1
-                      "#{word} #{ary[num]}"
-                    elsif ary.length > 2
-                      "#{ary[num]}#{dlm} "
+    array.each_index do |num|
+      new_string += if num == array.length - 1 && array.length > 1
+                      "#{word} #{array[num]}"
+                    elsif array.length > 2
+                      "#{array[num]}#{delimiter} "
                     else
-                      "#{ary[num]} "
+                      "#{array[num]} "
                     end
     end
+
     new_string
   end
+end
 
-  def clear
-    system 'clear'
+module Displayable
+  def clear_screen
+    system('clear') || system('cls')
+  end
+
+  def display_choose_first_player_message
+    puts "Who should make the first move?" \
+         " Type #{human.name} or #{computer.name}."
+  end
+
+  def display_score
+    human_points_string = human.get_points_string
+    computer_points_string = computer.get_points_string
+    puts "You have #{human.score} #{human_points_string}.\n" \
+         "#{computer.name} has #{computer.score} #{computer_points_string}."
+    puts ""
+  end
+
+  def display_new_round_message
+    puts "Here we go!"
+    puts ""
+  end
+
+  def display_rules
+    puts "First player to win 5 rounds wins the game."
+    puts ""
+  end
+
+  def display_welcome_message
+    puts "Welcome to Tic Tac Toe!"
+    puts ""
+    display_rules
+  end
+
+  def display_board_and_clear_screen
+    clear_screen
+    display_board
+  end
+
+  def display_board
+    puts "#{human.name} is: #{human.marker}"
+    puts "#{computer.name} is: #{computer.marker}"
+    puts ""
+    puts display_score
+    board.draw
+    puts ""
+  end
+
+  def display_goodbye_message
+    puts "Thanks for playing Tic Tac Toe. Goodbye!"
+  end
+
+  def display_new_match_message
+    puts "Let's play again!"
+    puts ""
+    display_rules
+  end
+
+  def display_round_result
+    display_board_and_clear_screen
+
+    case board.winning_marker
+    when human.marker
+      puts "You won this round!"
+    when computer.marker
+      puts "#{computer.name} won this round :("
+    else
+      puts "It's a tie..."
+    end
+
+    puts ""
+  end
+
+  def display_match_result
+    display_board_and_clear_screen
+    if human.score == 5
+      puts "You win the match, #{human.name}! Congratulations!"
+    elsif human.forfeited == true
+      puts "You forfeited the match, #{human.name}. You chicken???"
+      human.forfeited = false
+    else
+      puts "You lost the match, #{human.name}. You are SUCH a loser..."
+    end
   end
 end
 
@@ -55,6 +138,7 @@ class Board
         return squares.first.marker
       end
     end
+
     nil
   end
 
@@ -63,6 +147,7 @@ class Board
     line.each do |square|
       markers += 1 if @squares[square].marker == marker
     end
+
     markers
   end
 
@@ -71,6 +156,7 @@ class Board
     line.each do |square|
       value = square if @squares[square].marker == marker
     end
+
     value
   end
 
@@ -96,6 +182,21 @@ class Board
 
   def reset_board
     (1..9).each { |key| @squares[key] = Square.new }
+  end
+
+  def find_at_risk_square(marker)
+    square = nil
+    WINNING_LINES.each do |line|
+      if marker_count(line, marker) == 2 &&
+        marker_count(line, Square::INITIAL_MARKER) == 1
+        square = square_value(line, Square::INITIAL_MARKER)
+        break
+      else
+        square = false
+      end
+    end
+
+    square
   end
 
   private
@@ -129,44 +230,101 @@ class Square
 end
 
 class Player
-  attr_accessor :marker, :name, :forfeited
+  include StringHelpers
+  attr_accessor :marker, :name, :forfeited, :score
 
   def initialize(marker, name)
     @marker = marker
     @name = name
     @forfeited = false
+    @score = 0
+  end
+
+  def update_score(board)
+    self.score += 1 if board.winning_marker == self.marker
+  end
+
+  def get_points_string
+    self.score == 1 ? "point" : "points"
   end
 end
 
-class Score
-  attr_accessor :human, :computer
+class Human < Player
+  def pick_marker
+    puts "Choose any single character as a marker (besides 'O')." \
+         " The default is 'X'."
+    answer = nil
+    loop do
+      answer = gets.strip
+      break if answer != 'O' && answer.size == 1
+      puts "Invalid entry. Please enter only a single " \
+           "character that is not a capital 'O'."
+    end
 
-  def initialize
-    @human = 0
-    @computer = 0
+    self.marker = answer
+  end
+
+  def set_name
+    puts "Enter your name. Leave blank and hit enter for the default: 'Player'"
+    answer = gets.strip
+    self.name = answer.empty? ? 'Player' : answer
+    puts "Hi #{self.name}!"
+  end
+
+  def moves(board)
+    puts "Choose a square: #{joinor(board.unmarked_keys)}"
+    square = nil
+    loop do
+      square = gets.chomp.to_i
+      break if board.unmarked_keys.include?(square)
+      puts "Sorry, that's not a valid choice."
+    end
+
+    board[square] = self.marker
+  end
+
+  def turn?(current_marker)
+    current_marker == self.marker
+  end
+end
+
+class Computer < Player
+  def set_name
+    puts "Enter a computer name." \
+         " Leave blank and hit enter for the default: 'Computer'"
+    answer = gets.strip
+    self.name = answer.empty? ? 'Computer' : answer
+  end
+
+  def move(board, human)
+    chosen_square = board.find_at_risk_square(self.marker) ||
+                    board.find_at_risk_square(human.marker) ||
+                    board.square_five ||
+                    board.unmarked_keys.sample
+    board[chosen_square] = self.marker
   end
 end
 
 class TTTGame
-  include Utilities
+  include StringHelpers
+  include Displayable
 
   DEFAULT_HUMAN_MARKER = 'X'
   DEFAULT_COMPUTER_MARKER = 'O'
 
-  attr_reader :board, :human, :computer, :score, :first_player
+  attr_reader :board, :human, :computer, :first_player
 
   def initialize
     @board = Board.new
-    @human = Player.new(DEFAULT_HUMAN_MARKER, 'Player')
-    @computer = Player.new(DEFAULT_COMPUTER_MARKER, 'Computer')
+    @human = Human.new(DEFAULT_HUMAN_MARKER, 'Player')
+    @computer = Computer.new(DEFAULT_COMPUTER_MARKER, 'Computer')
     @current_marker = DEFAULT_HUMAN_MARKER
-    @score = Score.new
     @first_player = human.marker
     @first_iteration = true
   end
 
   def play
-    clear
+    clear_screen
     display_welcome_message
     loop do
       choose_settings
@@ -176,6 +334,7 @@ class TTTGame
       reset(:match)
       display_new_match_message
     end
+
     display_goodbye_message
   end
 
@@ -184,9 +343,10 @@ class TTTGame
   ### Settings ###
   def choose_settings
     if ask_user_to_choose_settings == 'y'
-      clear
-      set_player_names
-      pick_marker
+      clear_screen
+      human.set_name
+      computer.set_name
+      human.pick_marker
       choose_first_player
     end
   end
@@ -198,15 +358,18 @@ class TTTGame
     else
       puts "Would you like to update your settings? (y or n)"
     end
+
     answer = nil
     loop do
       answer = gets.chomp.downcase
       break if ['y', 'n'].include?(answer)
       puts "Invalid entry. Please enter y or n only."
     end
+
     answer
   end
 
+  # rubocop:disable Metrics/AbcSize
   def choose_first_player
     display_choose_first_player_message
     answer = nil
@@ -216,40 +379,19 @@ class TTTGame
       puts "Invalid entry. Please enter either " \
            "#{human.name} or #{computer.name}"
     end
+
     assign_first_player(answer)
   end
+  # rubocop:enable Metrics/AbcSize
 
   def assign_first_player(choice)
-    if choice == human.name.downcase
-      @first_player = human.marker
-      @current_marker = human.marker
-    else
-      @first_player = computer.marker
-      @current_marker = computer.marker
-    end
-  end
+    @first_player = if choice == human.name.downcase
+                      human.marker
+                    else
+                      computer.marker
+                    end
 
-  def pick_marker
-    puts "Choose any single character as a marker (besides 'O')." \
-         " The default is 'X'."
-    answer = nil
-    loop do
-      answer = gets.chomp
-      break if answer != 'O' && answer.size == 1
-      puts "Invalid entry. Please enter only a single " \
-           "character that is not a capital 'O'."
-    end
-    human.marker = answer
-  end
-
-  def set_player_names
-    puts "Enter your name. Leave blank and hit enter for the default: 'Player'"
-    answer = gets.chomp
-    human.name = answer.empty? ? 'Player' : answer
-    puts "Hi #{human.name}! \nEnter a computer name." \
-         " Leave blank and hit enter for the default: 'Computer'"
-    answer = gets.chomp
-    answer.empty? ? computer.name = 'Computer' : computer.name = answer
+    @current_marker = @first_player
   end
 
   ### Logic ###
@@ -258,15 +400,17 @@ class TTTGame
     loop do
       current_player_moves
       break if board.someone_won? || board.full?
-      display_board_and_clear_screen if human_turn?
+      display_board_and_clear_screen if human.turn?(@current_marker)
     end
-    update_score
+
+    human.update_score(board)
+    computer.update_score(board)
   end
 
   def single_match_logic
     loop do
       single_round_logic
-      break if score.human == 5 || score.computer == 5
+      break if human.score == 5 || computer.score == 5
       display_round_result
       break unless next_round?
       reset(:round)
@@ -274,73 +418,15 @@ class TTTGame
     end
   end
 
-  def find_at_risk_square(marker)
-    square = nil
-    Board::WINNING_LINES.each do |line|
-      if board.marker_count(line, marker) == 2 &&
-         board.marker_count(line, Square::INITIAL_MARKER) == 1
-        square = board.square_value(line, Square::INITIAL_MARKER)
-        break
-      else
-        square = false
-      end
-    end
-    square
-  end
-
   ### Turns ###
-  def human_moves
-    puts "Choose a square: #{joinor(board.unmarked_keys)}"
-    square = nil
-    loop do
-      square = gets.chomp.to_i
-      break if board.unmarked_keys.include?(square)
-      puts "Sorry, that's not a valid choice."
-    end
-
-    board[square] = human.marker
-  end
-
-  def computer_moves
-    chosen_square = find_at_risk_square(computer.marker) ||
-                    find_at_risk_square(human.marker) ||
-                    board.square_five ||
-                    board.unmarked_keys.sample
-    board[chosen_square] = computer.marker
-  end
-
   def current_player_moves
-    if human_turn?
-      human_moves
+    if human.turn?(@current_marker)
+      human.moves(board)
       @current_marker = computer.marker
     else
-      computer_moves
+      computer.move(board, human)
       @current_marker = human.marker
     end
-  end
-
-  def human_turn?
-    @current_marker == human.marker
-  end
-
-  ### Scoring ###
-  def update_score
-    case board.winning_marker
-    when human.marker
-      score.human += 1
-    when computer.marker
-      score.computer += 1
-    end
-  end
-
-  def get_points_string(player)
-    if player == :human
-      return "points" unless score.human == 1
-    end
-    if player == :computer
-      return "points" unless score.computer == 1
-    end
-    "point"
   end
 
   ### New Game Methods ###
@@ -364,99 +450,21 @@ class TTTGame
       break if %w(y n).include? answer
       puts "Sorry, must be y or n."
     end
+
     human.forfeited = true if answer == 'n'
     answer == 'y'
   end
 
   def reset(type=:match)
     if type == :match
-      score.human = 0
-      score.computer = 0
+      human.score = 0
+      computer.score = 0
     end
+
     board.reset_board
     @current_marker = @first_player
     human.forfeited = false
-    clear
-  end
-
-  #### DISPLAY ####
-  def display_choose_first_player_message
-    puts "Who should make the first move?" \
-         " Type #{human.name} or #{computer.name}."
-  end
-
-  def display_score
-    human_points_string = get_points_string(:human)
-    computer_points_string = get_points_string(:computer)
-    puts "You have #{score.human} #{human_points_string}.\n" \
-         "#{computer.name} has #{score.computer} #{computer_points_string}."
-    puts ""
-  end
-
-  def display_new_round_message
-    puts "Here we go!"
-    puts ""
-  end
-
-  def display_rules
-    puts "First player to win 5 rounds wins the game."
-    puts ""
-  end
-
-  def display_welcome_message
-    puts "Welcome to Tic Tac Toe!"
-    puts ""
-    display_rules
-  end
-
-  def display_board_and_clear_screen
-    clear
-    display_board
-  end
-
-  def display_board
-    puts "#{human.name} is: #{human.marker}"
-    puts "#{computer.name} is: #{computer.marker}"
-    puts ""
-    puts display_score
-    board.draw
-    puts ""
-  end
-
-  def display_goodbye_message
-    puts "Thanks for playing Tic Tac Toe. Goodbye!"
-  end
-
-  def display_new_match_message
-    puts "Let's play again!"
-    puts ""
-    display_rules
-  end
-
-  def display_round_result
-    display_board_and_clear_screen
-
-    case board.winning_marker
-    when human.marker
-      puts "You won this round!"
-    when computer.marker
-      puts "#{computer.name} won this round :("
-    else
-      puts "It's a tie..."
-    end
-    puts ""
-  end
-
-  def display_match_result
-    display_board_and_clear_screen
-    if score.human == 5
-      puts "You win the match, #{human.name}! Congratulations!"
-    elsif human.forfeited == true
-      puts "You forfeited the match, #{human.name}. You chicken???"
-      human.forfeited = false
-    else
-      puts "You lost the match, #{human.name}. You are SUCH a loser..."
-    end
+    clear_screen
   end
 end
 
