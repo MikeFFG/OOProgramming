@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 require 'pry'
 
 module Displayable
@@ -17,7 +18,7 @@ module Displayable
 
   def display_press_key_to_start
     prompt "Ready to play? Press enter key to continue."
-    answer = gets.chomp
+    gets.chomp
   end
 
   def concatenate_cards(hand)
@@ -32,6 +33,19 @@ module Displayable
                     end
     end
     new_string
+  end
+
+  def display_turn_start
+    prompt "==============="
+    prompt "#{name}'s turn."
+    prompt "==============="
+  end
+
+  def display_compare_cards
+    prompt "==============="
+    dealer.display_total
+    player.display_total
+    prompt "==============="
   end
 end
 
@@ -49,13 +63,12 @@ class Participant
   end
 
   def display_hit
-    prompt "#{hand.last}"
+    hand.last.to_s
   end
 
   def total
     # binding.pry
     values = hand.map { |card| card.face }
-
     sum = 0
     values.each do |value|
       sum += if value == "Ace"
@@ -68,7 +81,7 @@ class Participant
     end
 
     # correct for Aces
-    values.select { |value| value == "A" }.count.times do
+    values.select { |value| value == "Ace" }.count.times do
       sum -= 10 if sum > 21
     end
 
@@ -76,7 +89,7 @@ class Participant
   end
 
   def display_total
-    prompt "#{name}'s total = #{total}"
+    prompt "#{name}'s total is #{total}"
   end
 
   def busted?
@@ -94,11 +107,33 @@ class Player < Participant
     super
   end
 
-  def display_initial_cards
-    prompt "#{name} shows: #{hand[0]} and #{hand[1]}"
+  def stay
   end
 
-  def stay
+  def turn(deck)
+    display_turn_start
+
+    loop do
+      puts "Hit or Stay? (h or s)"
+      answer = nil
+      loop do
+        answer = gets.chomp.downcase
+        break if ['h', 's'].include?(answer)
+        prompt "Invalid entry. Enter 'h' or 's' only."
+      end
+      clear_screen
+      if answer == 's'
+        prompt "#{name} stays!"
+        break
+      elsif busted?
+        break
+      else
+        hit(deck.deal)
+        prompt "#{name} hits and gets a #{display_hit}"
+        display_total
+        break if busted?
+      end
+    end
   end
 end
 
@@ -112,6 +147,24 @@ class Dealer < Participant
   end
 
   def stay
+  end
+
+  def turn(deck)
+    display_turn_start
+    display_cards
+
+    loop do
+      display_total
+      if total >= 17 && !busted?
+        prompt "Dealer Stays"
+        break
+      elsif busted?
+        break
+      else
+        hit(deck.deal)
+        prompt "#{name} hits and gets a #{display_hit}"
+      end
+    end
   end
 end
 
@@ -139,7 +192,7 @@ end
 class Card
   SUITS = ['Hearts', 'Spades', 'Clubs', 'Diamonds'].freeze
   FACES = ['Ace', '2', '3', '4', '5', '6', '7'] +
-           ['8', '9', '10', 'Jack', 'Queen', 'King'].freeze
+          ['8', '9', '10', 'Jack', 'Queen', 'King'].freeze
 
   attr_accessor :face, :suit
 
@@ -164,7 +217,7 @@ class Game
   end
 
   def deal_cards
-    player.hand[0]= deck.deal
+    player.hand[0] = deck.deal
     dealer.hand[0] = deck.deal
     player.hand[1] = deck.deal
     dealer.hand[1] = deck.deal
@@ -172,32 +225,28 @@ class Game
 
   def display_initial_cards
     dealer.display_initial_cards
-    player.display_initial_cards
-  end
-
-  def ask_player_for_action
-    answer = nil
-    prompt "Hit or Stay? (h or s)"
-    loop do
-      answer = gets.chomp.downcase
-      break if ['h','s'].include?(answer)
-      prompt "Invalid Entry. Please enter h or s only."
-    end
-    answer
-  end
-
-  def player_turn
-  end
-
-  def dealer_turn
-
+    player.display_cards
   end
 
   def show_result
-
+    prompt detect_result
   end
 
-  def start
+  def detect_result
+    if player.total > 21
+      "#{player.name} busted! #{dealer.name} wins!"
+    elsif player.total <= 21 && player.total > dealer.total
+      "#{player.name} won!"
+    elsif dealer.total > 21
+      "#{dealer.name} busted! #{player.name} wins!"
+    elsif dealer.total <= 21 && dealer.total > player.total
+      "#{dealer.name} won!"
+    else
+      "It's a push!"
+    end
+  end
+
+  def play
     clear_screen
     display_welcome_message
     display_press_key_to_start
@@ -207,42 +256,13 @@ class Game
     display_initial_cards
     player.display_total
 
-    loop do
-      # player_turn
-      if ask_player_for_action == 'h'
-        player.hit(deck.deal)
-        player.display_hit
-        if player.busted?
-          break
-        end
-      else
-        prompt "Player Stays"
-        break
-      end
-      player.display_total
-    end
-    if player.busted?
-      prompt "You busted!"
-    else
-      prompt "Dealer's turn now."
-      dealer.display_cards
-      loop do
-        #dealer_turn
-        
-        if dealer.total < 17
-          dealer.hit(deck.deal)
-          # dealer.display_hit
-          if dealer.busted?
-            break
-          end
-        else
-          prompt "Dealer Stays"
-          break
-        end
-      end
+    player.turn(deck)
+    if !player.busted?
+      dealer.turn(deck)
+      display_compare_cards
     end
     show_result
   end
 end
 
-Game.new.start
+Game.new.play
