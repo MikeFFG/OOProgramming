@@ -47,6 +47,16 @@ module Displayable
     player.display_total
     prompt "==============="
   end
+
+  def hit_or_stay
+    prompt "Hit or Stay? (h or s)"
+    answer = nil
+    loop do
+      answer = gets.chomp.downcase
+      break if ['h', 's'].include?(answer)
+      prompt "Invalid entry. Enter 'h' or 's' only."
+    end
+  end
 end
 
 class Participant
@@ -68,7 +78,7 @@ class Participant
   end
 
   def total
-    values = hand.map { |card| card.face }
+    values = hand.map(&:face)
     sum = 0
     values.each do |value|
       sum += if value == "Ace"
@@ -115,13 +125,6 @@ class Player < Participant
     display_turn_start
 
     loop do
-      prompt "Hit or Stay? (h or s)"
-      answer = nil
-      loop do
-        answer = gets.chomp.downcase
-        break if ['h', 's'].include?(answer)
-        prompt "Invalid entry. Enter 'h' or 's' only."
-      end
       clear_screen
       if answer == 's'
         prompt "#{name} stays!"
@@ -167,7 +170,6 @@ class Dealer < Participant
 end
 
 class Deck
-
   def initialize
     @cards = []
     Card::SUITS.each do |suit|
@@ -229,11 +231,11 @@ class Game
   def display_result
     display_string = case detect_result
                      when :player_busted
-                       "#{player.name} busted! #{dealer.name} wins!"
+                       "#{player.name} busted! #{dealer.name} wins this round!"
                      when :player_won
                        "#{player.name} won!"
                      when :dealer_busted
-                       "#{dealer.name} busted! #{player.name} wins!"
+                       "#{dealer.name} busted! #{player.name} wins this round!"
                      when :dealer_won
                        "#{dealer.name} won!"
                      when :push
@@ -244,13 +246,14 @@ class Game
   end
 
   def detect_result
-    if player.total > 21
-      :player_busted
-    elsif player.total <= 21 && player.total > dealer.total
+    player_total = player.total
+    dealer_total = dealer.total
+
+    if player_total > dealer_total
+      return :player_busted if player_total > 21
       :player_won
-    elsif dealer.total > 21
-      :dealer_busted
-    elsif dealer.total <= 21 && dealer.total > player.total
+    elsif dealer_total > player_total
+      return :dealer_busted if dealer_total > 21
       :dealer_won
     else
       :push
@@ -289,8 +292,8 @@ class Game
     dealer.reset_hand
   end
 
+  # rubocop:disable Metrics/AbcSize
   def play_single_round
-    clear_screen
     deal_cards
     display_initial_cards
     player.display_total
@@ -303,9 +306,8 @@ class Game
 
     display_result
     update_score
-    display_score
-    reset_hands
   end
+  # rubocop:enable Metrics/AbcSize
 
   def start
     clear_screen
@@ -313,7 +315,10 @@ class Game
     display_press_key_to_start
 
     loop do
+      clear_screen
       play_single_round
+      reset_hands
+      display_score
       break unless next_round?
     end
     prompt "Thanks for playing Twenty-One. Goodbye!"
