@@ -51,11 +51,12 @@ end
 
 class Participant
   include Displayable
-  attr_accessor :hand, :name
+  attr_accessor :hand, :name, :score
 
   def initialize(name)
     @name = name
     @hand = []
+    @score = 0
   end
 
   def hit(card)
@@ -67,7 +68,6 @@ class Participant
   end
 
   def total
-    # binding.pry
     values = hand.map { |card| card.face }
     sum = 0
     values.each do |value|
@@ -96,6 +96,10 @@ class Participant
     total > 21
   end
 
+  def reset_hand
+    self.hand = []
+  end
+
   def display_cards
     string_to_display = "#{name} shows: " + concatenate_cards(hand)
     prompt string_to_display
@@ -107,14 +111,11 @@ class Player < Participant
     super
   end
 
-  def stay
-  end
-
   def turn(deck)
     display_turn_start
 
     loop do
-      puts "Hit or Stay? (h or s)"
+      prompt "Hit or Stay? (h or s)"
       answer = nil
       loop do
         answer = gets.chomp.downcase
@@ -144,9 +145,6 @@ class Dealer < Participant
 
   def display_initial_cards
     prompt "#{name} shows: #{hand[0]} and unknown card"
-  end
-
-  def stay
   end
 
   def turn(deck)
@@ -228,29 +226,70 @@ class Game
     player.display_cards
   end
 
-  def show_result
-    prompt detect_result
+  def display_result
+    display_string = case detect_result
+                     when :player_busted
+                       "#{player.name} busted! #{dealer.name} wins!"
+                     when :player_won
+                       "#{player.name} won!"
+                     when :dealer_busted
+                       "#{dealer.name} busted! #{player.name} wins!"
+                     when :dealer_won
+                       "#{dealer.name} won!"
+                     when :push
+                       "It's a push!"
+                     end
+    prompt display_string
+    prompt "==============="
   end
 
   def detect_result
     if player.total > 21
-      "#{player.name} busted! #{dealer.name} wins!"
+      :player_busted
     elsif player.total <= 21 && player.total > dealer.total
-      "#{player.name} won!"
+      :player_won
     elsif dealer.total > 21
-      "#{dealer.name} busted! #{player.name} wins!"
+      :dealer_busted
     elsif dealer.total <= 21 && dealer.total > player.total
-      "#{dealer.name} won!"
+      :dealer_won
     else
-      "It's a push!"
+      :push
     end
   end
 
-  def play
-    clear_screen
-    display_welcome_message
-    display_press_key_to_start
+  def update_score
+    if detect_result == :player_won || detect_result == :dealer_busted
+      player.score += 1
+    elsif detect_result == :dealer_won || detect_result == :player_busted
+      dealer.score += 1
+    end
+  end
 
+  def display_score
+    prompt "Current score is:"
+    prompt "#{player.name} #{player.score}"
+    prompt "#{dealer.name} #{dealer.score}"
+    prompt "==============="
+  end
+
+  def next_round?
+    prompt "Ready for the next round? (y or n)"
+    answer = nil
+    loop do
+      answer = gets.chomp.downcase
+      break if ['y', 'n'].include?(answer)
+      prompt "Invalid entry. Enter 'y' or 'n' only."
+    end
+    return true if answer == 'y'
+    false
+  end
+
+  def reset_hands
+    player.reset_hand
+    dealer.reset_hand
+  end
+
+  def play_single_round
     clear_screen
     deal_cards
     display_initial_cards
@@ -259,10 +298,26 @@ class Game
     player.turn(deck)
     if !player.busted?
       dealer.turn(deck)
-      display_compare_cards
+      display_compare_cards unless dealer.busted?
     end
-    show_result
+
+    display_result
+    update_score
+    display_score
+    reset_hands
+  end
+
+  def start
+    clear_screen
+    display_welcome_message
+    display_press_key_to_start
+
+    loop do
+      play_single_round
+      break unless next_round?
+    end
+    prompt "Thanks for playing Twenty-One. Goodbye!"
   end
 end
 
-Game.new.play
+Game.new.start
